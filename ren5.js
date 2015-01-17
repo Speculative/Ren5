@@ -21,11 +21,12 @@ AssetStore.prototype.load_assets = function() {
 		this[category] = {};
 		for (var asset of this.requirements[category]) {
 			var asset_path = "assets/" + category + "/" + asset;
-			this[category][asset] = new Asset(asset, asset_path, function() {
-				store.progress += 1;
-				console.log(store.progress / store.progress_target);
-				if (store.progress == store.progress_target) {
-					document.dispatchEvent(store.completion_event);
+			this[category][asset] = new Asset(asset, asset_path,
+				function() {
+					store.progress += 1;
+					console.log(store.progress / store.progress_target);
+					if (store.progress == store.progress_target) {
+						document.dispatchEvent(store.completion_event);
 				}
 			});
 		}
@@ -91,9 +92,10 @@ function requirements() {
  * ===========
  */
 
-function Scene(context, assets) {
+function Scene(context, assets, ui_controller) {
 	this.context = context;
 	this.assets = assets;
+	this.ui_controller = ui_controller;
 	this.positions = {
 		LEFT: {
 			x: 0.2,
@@ -150,6 +152,53 @@ Scene.prototype.play_bgm = function(bgm_name) {
 }
 
 /*
+ * ========
+ * UI STUFF
+ * ========
+ */
+
+function UIController() {
+	this.elements = [];
+}
+
+UIController.prototype.add_element = function(ui_element) {
+	this.elements.push(ui_element);
+}
+
+UIController.prototype.handle_click = function(e) {
+	var canvas = document.getElementById("ren5");
+
+	var x = 0;
+	var y = 0;
+
+	if (typeof(e.x) !== "undefined" && typeof(e.y) !== "undefined") {
+		x = e.x - canvas.offsetLeft;
+		y = e.y - canvas.offsetTop;
+	} else {
+		// Firefox does weird things with click position
+		x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft - canvas.offsetLeft;
+		y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop - canvas.offsetTop;
+	}
+
+
+	console.log(x + ", " + y);
+}
+
+function UIElement(asset, position, size) {
+	this.asset = asset;
+	this.position = position;
+	this.size = size;
+}
+
+UIElement.in_bounds = function(position) {
+	var left_x = this.position.x;
+	var right_x = this.position.x + this.size.x;
+	var top_y = this.position.y;
+	var bottom_y = this.position.y + this.size.y;
+	return (position.x >= left_x) && (position.x <= right_x) && (position.y >= top_y) && (position.y <= bottom_y);
+}
+
+/*
  * =========
  * MAIN LOOP
  * =========
@@ -167,12 +216,15 @@ function setup() {
 function run(assets) {
 	var canvas = document.getElementById("ren5");
 	var context = canvas.getContext("2d");
-	var scene = new Scene(context, assets);
+	var controller = new UIController();
+	var scene = new Scene(context, assets, controller);
+
+	canvas.addEventListener("mouseup", controller.handle_click);
 
 	scene.draw_backdrop("default.png");
 	scene.draw_character("jeff.png", scene.positions.RIGHT);
 	scene.draw_character("pj.png", scene.positions.LEFT);
-	scene.play_bgm("morejo.mp3");
+	//scene.play_bgm("morejo.mp3");
 }
 
 $(document).ready(setup);
