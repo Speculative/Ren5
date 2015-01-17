@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 18.1.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 111.5 32" enable-background="new 0 0 111.5 32" xml:space="preserve">
+<g>
+	<path fill="#283D3D" d="M-111.6,20.3c0,6.5,5.3,11.8,11.9,11.8h434.5V19.7c0-10.9-8.9-19.7-19.9-19.7h-426.5V20.3z"/>
+</g>
+<g>
+	<defs>
+		<path id="SVGID_8_" d="M-111.6,20.3c0,6.5,5.3,11.8,13.5,11.8h430.3l-1.8-12.3c0-10.9-8.8-19.7-17.9-19.7h-422.3L-111.6,20.3z"/>
+	</defs>
+	<use xlink:href="#SVGID_8_"  overflow="visible" fill="#283D3D"/>
+	<clipPath id="SVGID_2_">
+		<use xlink:href="#SVGID_8_"  overflow="visible"/>
+	</clipPath>
+	<g clip-path="url(#SVGID_2_)">
+		<g opacity="0.7">
+			<path fill="#283D3D" d="M111.6,43.8H-1v-53.9h112.6V43.8z M0,42.8h110.6V-9.1H0V42.8z"/>
+		</g>
+		<g opacity="0.7">
+			<path fill="#283D3D" d="M222.9,43.8H110.4v-53.9h112.5V43.8z M111.4,42.8h110.5V-9.1H111.4V42.8z"/>
+		</g>
+	</g>
+</g>
+<g>
+	<path fill="#FFD110" d="M36.6,10.9h1.5l4,9.1h-1.7l-0.9-2.2h-4.3L34.3,20h-1.6L36.6,10.9z M38.9,16.4l-1.6-3.6l-1.5,3.6H38.9z"/>
+	<path fill="#FFD110" d="M44.4,16.2V11H46v5.1c0,1.7,0.9,2.6,2.3,2.6c1.4,0,2.3-0.8,2.3-2.5V11h1.6v5.1c0,2.7-1.5,4-3.9,4
+		C45.9,20.2,44.4,18.8,44.4,16.2z"/>
+	<path fill="#FFD110" d="M57.8,12.5H55V11h7.3v1.5h-2.9V20h-1.6V12.5z"/>
+	<path fill="#FFD110" d="M64.4,15.5L64.4,15.5c0-2.6,2-4.7,4.7-4.7c2.8,0,4.7,2.1,4.7,4.6v0c0,2.5-2,4.7-4.7,4.7
+		S64.4,18.1,64.4,15.5z M72.1,15.5L72.1,15.5c0-1.8-1.3-3.2-3.1-3.2s-3,1.4-3,3.2v0c0,1.8,1.3,3.2,3.1,3.2
+		C70.9,18.7,72.1,17.3,72.1,15.5z"/>
+</g>
+</svg>
