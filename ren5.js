@@ -65,7 +65,9 @@ Asset.prototype.load_asset = function() {
 		this.asset.onload = this.done_callback;
 		this.asset.src = this.path;
 	} else if (BGM_EXTS.indexOf(ext) !== -1) {
-		return null;
+		this.asset = new Audio();
+		this.asset.addEventListener("canplaythrough", this.done_callback);
+		this.asset.src = this.path;
 	} else {
 		return null;
 	}
@@ -78,7 +80,7 @@ Asset.prototype.get = function() {
 function requirements() {
 	return {scenes: ["default.png"],
 		characters: ["jeff.png", "pj.png"],
-		bgm: []}
+		bgm: ["morejo.mp3"]}
 }
 
 
@@ -90,11 +92,26 @@ function requirements() {
  */
 
 function draw_scene(context, assets, scene_name) {
-	context.drawImage(assets["scenes"][scene_name].get(), 0, 0);
+	context.drawImage(assets["scenes"][scene_name].get(), 0, 0, context.canvas.clientWidth, context.canvas.clientHeight);
 }
 
 function draw_char(context, assets, char_name) {
 	context.drawImage(assets["characters"][char_name].get(), 0, 0);
+}
+
+/*
+ * ===========
+ * MUSIC STUFF
+ * ===========
+ */
+
+function play_sound(assets, bgm_name) {
+	// Note to future Jeff: setting sound.currentTime (sometimes) fires the
+	// canplaythrough event which will probably do weird things to the
+	// loading progress. That probably does something bad.
+	var sound = assets["bgm"][bgm_name].get();
+	sound.currentTime = 0;
+	sound.play();
 }
 
 /*
@@ -118,6 +135,7 @@ function run(assets) {
 	var context = canvas.getContext("2d");
 	draw_scene(context, assets, "default.png");
 	draw_char(context, assets, "jeff.png");
+	//play_sound(assets, "morejo.mp3");
 }
 
 $(document).ready(setup);
