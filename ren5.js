@@ -84,6 +84,9 @@ Asset.prototype.get = function() {
  * ===========
  */
 
+/*
+ * Handles all drawing and music playing
+ */
 function Scene(context, assets, ui_controller) {
 	this.context = context;
 	this.assets = assets;
@@ -99,6 +102,7 @@ function Scene(context, assets, ui_controller) {
 		}
 	};
 }
+
 
 Scene.prototype.draw_backdrop = function(backdrop_name) {
 	var backdrop = this.assets["backdrops"][backdrop_name].get();
@@ -146,6 +150,19 @@ Scene.prototype.play_bgm = function(bgm_name) {
 	sound.play();
 }
 
+Scene.prototype.render_ui = function() {
+	for (ui_element in this.ui_controller.elements) {
+		this.render_ui_element(this.ui_controller.elements[ui_element]);
+	}
+}
+
+Scene.prototype.render_ui_element = function(ui_element) {
+	console.log(ui_element);
+	this.context.drawImage(ui_element.asset.get(),
+			ui_element.position.x, ui_element.position.y,
+			ui_element.size.width, ui_element.size.height);
+}
+
 /*
  * ========
  * UI STUFF
@@ -160,36 +177,58 @@ UIController.prototype.add_element = function(ui_element) {
 	this.elements.push(ui_element);
 }
 
-UIController.prototype.handle_click = function(e) {
-	var canvas = document.getElementById("ren5");
+UIController.prototype.load_elements = function() {
+	return;
+}
 
+UIController.prototype.get_mouse_coords = function(e) {
+	var canvas = document.getElementById("ren5");
 	var x = 0;
 	var y = 0;
 
 	if (typeof(e.x) !== "undefined" && typeof(e.y) !== "undefined") {
-		x = e.x - canvas.offsetLeft;
-		y = e.y - canvas.offsetTop;
+		x = e.x;
+		y = e.y;
 	} else {
 		// Firefox does weird things with click position
-		x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft - canvas.offsetLeft;
-		y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop - canvas.offsetTop;
+		x = e.clientX;
+		y = e.clientY;
 	}
-
-
-	console.log(x + ", " + y);
+	x += document.body.scrollLeft + document.documentElement.scrollLeft - canvas.offsetLeft;
+	y += document.body.scrollTop + document.documentElement.scrollTop - canvas.offsetTop;
+	return {"x": x, "y": y};
 }
 
+UIController.prototype.handle_click = function(e) {
+
+	var x = 0;
+	var y = 0;
+
+	for (ui_element of this.elements) {
+		console.log(ui_element);
+		if (ui_element.in_bounds(this.get_mouse_coords(e))) {
+			console.log("in-bounds click!");
+		}
+	}
+}
+
+/*
+ * Expects absolute position and size
+ */
 function UIElement(asset, position, size) {
 	this.asset = asset;
 	this.position = position;
 	this.size = size;
 }
 
-UIElement.in_bounds = function(position) {
+UIElement.prototype.in_bounds = function(position) {
+	console.log(this);
+	console.log(position);
 	var left_x = this.position.x;
-	var right_x = this.position.x + this.size.x;
+	var right_x = this.position.x + this.size.width;
 	var top_y = this.position.y;
-	var bottom_y = this.position.y + this.size.y;
+	var bottom_y = this.position.y + this.size.height;
+	console.log(left_x + " " + right_x + " " + top_y + " " + bottom_y);
 	return (position.x >= left_x) && (position.x <= right_x) && (position.y >= top_y) && (position.y <= bottom_y);
 }
 
@@ -202,7 +241,10 @@ UIElement.in_bounds = function(position) {
 function requirements() {
 	return {backdrops: ["had_background.svg"],
 		characters: ["had_junko.svg", "had_pko.svg"],
-		bgm: ["morejo.mp3"]}
+		bgm: ["morejo.mp3"],
+		ui: ["dialogue.svg",
+		"bottom_config.svg", "bottom_load.svg", "bottom_save.svg", "bottom_menu.svg",
+		"dialogue_auto.svg", "dialogue_next.svg", "dialogue_scene.svg", "dialogue_skip.svg"]}
 }
 
 function setup() {
@@ -221,11 +263,25 @@ function run(assets) {
 	var controller = new UIController();
 	var scene = new Scene(context, assets, controller);
 
-	canvas.addEventListener("mouseup", controller.handle_click);
+	canvas.addEventListener("mouseup", function(e) {
+		controller.handle_click(e);
+	});
+
+	// Only for proof of concept purposes
+	var dialogue_asset = assets["ui"]["dialogue.svg"].get();
+	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
+	controller.add_element(new UIElement(assets["ui"]["dialogue.svg"],
+				{x: (104 / 1280) * canvas.width, y: (471.5 / 720) * canvas.height}, {width: 1280 * 0.844094488, height: (1280 * 0.844095588) / aspect_ratio }));
+
+	var skip = assets["ui"]["dialogue_skip.svg"].get();
+	aspect_ratio = skip.width / skip.height;
+	controller.add_element(new UIElement(assets["ui"]["dialogue_skip.svg"],
+				{x: 0, y: 0}, {width: 1280 * 0.087109375, height: (1280 * 0.087109375) / aspect_ratio}));
 
 	scene.draw_backdrop("had_background.svg");
 	scene.draw_character("had_junko.svg", scene.positions.RIGHT);
 	scene.draw_character("had_pko.svg", scene.positions.LEFT);
+	scene.render_ui();
 	//scene.play_bgm("morejo.mp3");
 }
 
