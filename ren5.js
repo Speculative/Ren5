@@ -1,4 +1,4 @@
-var IMG_EXTS = ["png", "jpg", "jpeg", "bmp"];
+var IMG_EXTS = ["png", "jpg", "jpeg", "bmp", "svg"];
 var BGM_EXTS = ["mp3", "wav"];
 
 /*
@@ -78,14 +78,6 @@ Asset.prototype.get = function() {
 	return this.asset;
 }
 
-function requirements() {
-	return {backdrops: ["default.png"],
-		characters: ["jeff.png", "pj.png"],
-		bgm: ["morejo.mp3"]}
-}
-
-
-
 /*
  * ===========
  * SCENE STUFF
@@ -112,6 +104,9 @@ Scene.prototype.draw_backdrop = function(backdrop_name) {
 	var backdrop = this.assets["backdrops"][backdrop_name].get();
 	var draw_height = this.context.canvas.clientHeight;
 	var draw_width = this.context.canvas.clientWidth;
+
+	this.context.fillStyle = "#FFFFFF";
+	this.context.clearRect(0, 0, draw_height, draw_width);
 
 	this.context.drawImage(backdrop,
 			0, 0,
@@ -204,6 +199,12 @@ UIElement.in_bounds = function(position) {
  * =========
  */
 
+function requirements() {
+	return {backdrops: ["had_background.svg"],
+		characters: ["had_junko.svg", "had_pko.svg"],
+		bgm: ["morejo.mp3"]}
+}
+
 function setup() {
 	var load_complete = new Event("load_complete");
 	var assets = null;
@@ -214,6 +215,7 @@ function setup() {
 }
 
 function run(assets) {
+	console.log("Done loading... running");
 	var canvas = document.getElementById("ren5");
 	var context = canvas.getContext("2d");
 	var controller = new UIController();
@@ -221,9 +223,9 @@ function run(assets) {
 
 	canvas.addEventListener("mouseup", controller.handle_click);
 
-	scene.draw_backdrop("default.png");
-	scene.draw_character("jeff.png", scene.positions.RIGHT);
-	scene.draw_character("pj.png", scene.positions.LEFT);
+	scene.draw_backdrop("had_background.svg");
+	scene.draw_character("had_junko.svg", scene.positions.RIGHT);
+	scene.draw_character("had_pko.svg", scene.positions.LEFT);
 	//scene.play_bgm("morejo.mp3");
 }
 
