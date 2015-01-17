@@ -78,7 +78,7 @@ Asset.prototype.get = function() {
 }
 
 function requirements() {
-	return {scenes: ["default.png"],
+	return {backdrops: ["default.png"],
 		characters: ["jeff.png", "pj.png"],
 		bgm: ["morejo.mp3"]}
 }
@@ -86,30 +86,65 @@ function requirements() {
 
 
 /*
- * ===================
- * SCENE DRAWING STUFF
- * ===================
+ * ===========
+ * SCENE STUFF
+ * ===========
  */
 
-function draw_scene(context, assets, scene_name) {
-	context.drawImage(assets["scenes"][scene_name].get(), 0, 0, context.canvas.clientWidth, context.canvas.clientHeight);
+function Scene(context, assets) {
+	this.context = context;
+	this.assets = assets;
+	this.positions = {
+		LEFT: {
+			x: 0.2,
+			y: 0.5
+		},
+		RIGHT: {
+			x: .8,
+			y: 0.5
+		}
+	};
 }
 
-function draw_char(context, assets, char_name) {
-	context.drawImage(assets["characters"][char_name].get(), 0, 0);
+Scene.prototype.draw_backdrop = function(backdrop_name) {
+	var backdrop = this.assets["backdrops"][backdrop_name].get();
+	var draw_height = this.context.canvas.clientHeight;
+	var draw_width = this.context.canvas.clientWidth;
+
+	this.context.drawImage(backdrop,
+			0, 0,
+			draw_width, draw_height);
 }
 
 /*
- * ===========
- * MUSIC STUFF
- * ===========
+ * position is given as a fraction of the screen size with x increasing left
+ * to right and y increasing top to bottom. x,y corresponds to the center of
+ * the character.
  */
+Scene.prototype.draw_character = function(character_name, position) {
+	var character = this.assets["characters"][character_name].get();
+	var aspect_ratio = character.width / character.height;
+	var draw_height = this.context.canvas.clientHeight;
+	var draw_width = aspect_ratio * draw_height;
 
-function play_sound(assets, bgm_name) {
+	if (typeof(position) === "undefined") {
+		position = this.positions["LEFT"];
+	}
+
+	var absolute_x = (position.x * this.context.canvas.clientWidth) - draw_width / 2;
+	var absolute_y = (position.y * this.context.canvas.clientHeight) - draw_height / 2;
+
+	this.context.drawImage(character,
+			absolute_x, absolute_y,
+			draw_width, draw_height);
+}
+
+Scene.prototype.play_bgm = function(bgm_name) {
 	// Note to future Jeff: setting sound.currentTime (sometimes) fires the
 	// canplaythrough event which will probably do weird things to the
 	// loading progress. That probably does something bad.
-	var sound = assets["bgm"][bgm_name].get();
+	var sound = this.assets["bgm"][bgm_name].get();
+
 	sound.currentTime = 0;
 	sound.play();
 }
@@ -130,12 +165,14 @@ function setup() {
 }
 
 function run(assets) {
-	console.log(assets);
 	var canvas = document.getElementById("ren5");
 	var context = canvas.getContext("2d");
-	draw_scene(context, assets, "default.png");
-	draw_char(context, assets, "jeff.png");
-	//play_sound(assets, "morejo.mp3");
+	var scene = new Scene(context, assets);
+
+	scene.draw_backdrop("default.png");
+	scene.draw_character("jeff.png", scene.positions.RIGHT);
+	scene.draw_character("pj.png", scene.positions.LEFT);
+	scene.play_bgm("morejo.mp3");
 }
 
 $(document).ready(setup);
