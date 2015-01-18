@@ -87,14 +87,16 @@ Asset.prototype.get = function() {
 /*
  * Handles all drawing and music playing
  */
-function Scene(context, assets, ui_controller) {
-	this.context = context;
+function Scene(backdrop_context, character_context, ui_context, assets, ui_controller) {
+	this.backdrop_context = backdrop_context;
+	this.character_context = character_context;
+	this.ui_context = ui_context;
 	this.assets = assets;
 	this.ui_controller = ui_controller;
+
 	this.characters = [];
 	this.backdrop = null;
 	this.active = null;
-	this.default_render = null;
 
 	this.positions = {
 		LEFT: {
@@ -116,8 +118,6 @@ Scene.prototype.render = function() {
 		this.draw_character(character.name, character.position);
 	}
 	this.render_ui();
-	this.default_render = this.context.getImageData(0, 0, this.context.canvas.clientWidth, this.context.canvas.clientHeight);
-	console.log(this.default_render);
 }
 
 /*
@@ -150,10 +150,12 @@ Scene.prototype.undo_hover = function() {
 	if (this.active !== null && this.default_render !== null) {
 		var dirty_element = this.active;
 		console.log("Un-hovering " + dirty_element.asset.alias);
-		this.context.putImageData(this.default_render,
+		/*
+		this.ui_context.putImageData(this.default_render,
 				dirty_element.position.x, dirty_element.position.y,
 				dirty_element.position.x, dirty_element.position.y,
 				dirty_element.size.width, dirty_element.size.height);
+		*/
 	}
 }
 
@@ -167,13 +169,13 @@ Scene.prototype.set_backdrop = function(backdrop_name) {
 
 Scene.prototype.draw_backdrop = function(backdrop_name) {
 	var backdrop = this.assets["backdrops"][backdrop_name].get();
-	var draw_height = this.context.canvas.clientHeight;
-	var draw_width = this.context.canvas.clientWidth;
+	var draw_height = this.backdrop_context.canvas.clientHeight;
+	var draw_width = this.backdrop_context.canvas.clientWidth;
 
-	this.context.fillStyle = "#FFFFFF";
-	this.context.clearRect(0, 0, draw_height, draw_width);
+	this.backdrop_context.fillStyle = "#FFFFFF";
+	this.backdrop_context.clearRect(0, 0, draw_height, draw_width);
 
-	this.context.drawImage(backdrop,
+	this.backdrop_context.drawImage(backdrop,
 			0, 0,
 			draw_width, draw_height);
 }
@@ -186,17 +188,17 @@ Scene.prototype.draw_backdrop = function(backdrop_name) {
 Scene.prototype.draw_character = function(character_name, position) {
 	var character = this.assets["characters"][character_name].get();
 	var aspect_ratio = character.width / character.height;
-	var draw_height = this.context.canvas.clientHeight;
+	var draw_height = this.character_context.canvas.clientHeight;
 	var draw_width = aspect_ratio * draw_height;
 
 	if (typeof(position) === "undefined") {
 		position = this.positions["LEFT"];
 	}
 
-	var absolute_x = (position.x * this.context.canvas.clientWidth) - draw_width / 2;
-	var absolute_y = (position.y * this.context.canvas.clientHeight) - draw_height / 2;
+	var absolute_x = (position.x * this.character_context.canvas.clientWidth) - draw_width / 2;
+	var absolute_y = (position.y * this.character_context.canvas.clientHeight) - draw_height / 2;
 
-	this.context.drawImage(character,
+	this.character_context.drawImage(character,
 			absolute_x, absolute_y,
 			draw_width, draw_height);
 }
@@ -234,12 +236,11 @@ Scene.prototype.render_ui_element = function(ui_element, active) {
 	var asset = null;
 
 	if (active) {
-		console.log(ui_element.hover_asset);
 		asset = ui_element.hover_asset.get();
 	} else {
 		asset = ui_element.asset.get();
 	}
-		this.context.drawImage(asset,
+		this.ui_context.drawImage(asset,
 				ui_element.position.x, ui_element.position.y,
 				ui_element.size.width, ui_element.size.height);
 }
@@ -258,6 +259,7 @@ function UIController() {
 }
 
 UIController.prototype.add_element = function(ui_element) {
+	console.log("adding element " + ui_element.asset.alias);
 	this.elements.push(ui_element);
 	this.click_events[ui_element.asset.alias] = new CustomEvent("ren5-click", {detail: {element: ui_element}});
 	this.hover_events[ui_element.asset.alias] = new CustomEvent("ren5-hover", {detail: {element: ui_element}});
@@ -268,20 +270,13 @@ UIController.prototype.load_elements = function() {
 }
 
 UIController.prototype.get_mouse_coords = function(e) {
-	var canvas = document.getElementById("ren5");
+	var canvas = document.getElementById("ren5-ui");
 	var x = 0;
 	var y = 0;
 
-	if (typeof(e.x) !== "undefined" && typeof(e.y) !== "undefined") {
-		x = e.x;
-		y = e.y;
-	} else {
-		// Firefox does weird things with click position
-		x = e.clientX;
-		y = e.clientY;
-	}
-	x += document.body.scrollLeft + document.documentElement.scrollLeft - canvas.offsetLeft;
-	y += document.body.scrollTop + document.documentElement.scrollTop - canvas.offsetTop;
+	var rect = canvas.getBoundingClientRect();
+	x = e.clientX - rect.left;
+	y = e.clientY - rect.top;
 	return {"x": x, "y": y};
 }
 
@@ -334,6 +329,8 @@ UIElement.prototype.in_bounds = function(position) {
 	var right_x = this.position.x + this.size.width;
 	var top_y = this.position.y;
 	var bottom_y = this.position.y + this.size.height;
+	console.log(left_x + " " + right_x + " " + top_y + " " + bottom_y);
+	console.log(position.x + " " + position.y);
 	return (position.x >= left_x) && (position.x <= right_x) && (position.y >= top_y) && (position.y <= bottom_y);
 }
 
@@ -365,16 +362,23 @@ function setup() {
 
 function run(assets) {
 	console.log("Done loading... running");
-	var canvas = document.getElementById("ren5");
-	var context = canvas.getContext("2d");
-	var controller = new UIController();
-	var scene = new Scene(context, assets, controller);
+	var backdrop_canvas = document.getElementById("ren5-backdrop");
+	var character_canvas = document.getElementById("ren5-character");
+	var ui_canvas = document.getElementById("ren5-ui");
+	var backdrop_context = backdrop_canvas.getContext("2d");
+	var character_context = character_canvas.getContext("2d");
+	var ui_context = ui_canvas.getContext("2d");
 
-	canvas.addEventListener("mouseup", function(e) {
+	var controller = new UIController();
+	var scene = new Scene(backdrop_context, character_context, ui_context, assets, controller);
+	console.log("made scene");
+
+	ui_canvas.addEventListener("mouseup", function(e) {
 		controller.handle_click(e);
 	});
 
-	canvas.addEventListener("mousemove", function(e) {
+	ui_canvas.addEventListener("mousemove", function(e) {
+		e.stopPropagation();
 		controller.handle_move(e);
 	});
 
@@ -382,55 +386,56 @@ function run(assets) {
 	var dialogue_asset = assets["ui"]["dialogue.svg"].get();
 	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
 	controller.add_element(new UIElement(assets["ui"]["dialogue.svg"],
-				{x: (104 / 1280) * canvas.width, y: (471.5 / 720) * canvas.height},
+				{x: (104 / 1280) * ui_canvas.width, y: (471.5 / 720) * ui_canvas.height},
 				{width: 1280 * 0.844094488, height: (1280 * 0.844095588) / aspect_ratio },
 				false));
 
 	var dialogue_button = assets["ui"]["dialogue_skip.svg"].get();
 	aspect_ratio = dialogue_button.width / dialogue_button.height;
 	controller.add_element(new UIElement(assets["ui"]["dialogue_skip.svg"],
-				{x: (484 / 1280) * canvas.width , y: (485 / 720) * canvas.height},
-				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				{x: (484 / 1280) * ui_canvas.width , y: (485 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["dialogue_skip_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["dialogue_auto.svg"],
-				{x: (595.5 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
-				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				{x: (595.5 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["dialogue_auto_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["dialogue_scene.svg"],
-				{x: (707 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
-				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				{x: (707 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["dialogue_scene_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["dialogue_log.svg"],
-				{x: (818.5 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
-				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				{x: (818.5 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["dialogue_log_hover.svg"]));
 
 	var bottom_button = assets["ui"]["bottom_save.svg"].get();
 	aspect_ratio = bottom_button.width / bottom_button.height;
 	controller.add_element(new UIElement(assets["ui"]["bottom_save.svg"],
-				{x: (263 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
-				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				{x: (263 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_save_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_load.svg"],
-				{x: (451 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
-				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				{x: (451 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_load_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_config.svg"],
-				{x: (639 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
-				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				{x: (639 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_config_hover.svg"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_menu.svg"],
-				{x: (827 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
-				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				{x: (827 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_menu_hover.svg"]));
+
 
 	scene.register_ui_handlers();
 

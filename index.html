@@ -23,7 +23,19 @@
 			margin-top: 2em;
 			margin-bottom: 2em;
 		}
-		#ren5 {
+		#ren5-container {
+			display: block;
+			position: relative;
+			height: 720px;
+			width: 1280px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+		#ren5-backdrop {
+			display: block;
+			position: absolute;
+			top: 0px;
+			left: 0px;
 			display: block;
 			margin-left: auto;
 			margin-right: auto;
@@ -31,13 +43,29 @@
 			overflow: hidden;
 			border: 1px solid pink;
 		}
+		#ren5-character {
+			display: block;
+			position: absolute;
+			top: 0px;
+			left: 0px;
+			border: 3px solid orange;
+		}
+		#ren5-ui {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+			border: 1px solid cyan;
+		}
 	</style>
 </head>
 <body>
 <article>
 <h1>Hackathons After Dark</h1>
-<canvas id="ren5" width="1280px" height="720px">
-</canvas>
+<section id="ren5-container">
+	<canvas id="ren5-backdrop" width="1280px" height="720px"></canvas>
+	<canvas id="ren5-character" width="1280px" height="720px"></canvas>
+	<canvas id="ren5-ui" width="1280px" height="720px"></canvas>
+</section>
 </article>
 </body>
 </html>
