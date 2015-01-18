@@ -91,6 +91,11 @@ function Scene(context, assets, ui_controller) {
 	this.context = context;
 	this.assets = assets;
 	this.ui_controller = ui_controller;
+	this.characters = [];
+	this.backdrop = null;
+	this.active = null;
+	this.default_render = null;
+
 	this.positions = {
 		LEFT: {
 			x: 0.2,
@@ -103,6 +108,62 @@ function Scene(context, assets, ui_controller) {
 	};
 }
 
+Scene.prototype.render = function() {
+	if (this.backdrop !== null) {
+		this.draw_backdrop(this.backdrop);
+	}
+	for (character of this.characters) {
+		this.draw_character(character.name, character.position);
+	}
+	this.render_ui();
+	this.default_render = this.context.getImageData(0, 0, this.context.canvas.clientWidth, this.context.canvas.clientHeight);
+	console.log(this.default_render);
+}
+
+/*
+ * Must be called after finished constructing UIController
+ */
+Scene.prototype.register_ui_handlers = function() {
+	var scene = this;
+	document.addEventListener("ren5-nohover", function() {
+		scene.no_hover_handler();
+	});
+	document.addEventListener("ren5-hover", function(e) {
+		scene.hover_handler(e.detail.element);
+	});
+	document.addEventListener("ren5-click", function(e) {
+		scene.click_handler(e.detail.element);
+	});
+}
+
+Scene.prototype.no_hover_handler = function() {
+	this.undo_hover();
+}
+
+Scene.prototype.hover_handler = function(ui_element) {
+	this.undo_hover();
+	this.active = this.ui_controller.active;
+	this.render_ui_element(ui_element, true);
+}
+
+Scene.prototype.undo_hover = function() {
+	if (this.active !== null && this.default_render !== null) {
+		var dirty_element = this.active;
+		console.log("Un-hovering " + dirty_element.asset.alias);
+		this.context.putImageData(this.default_render,
+				dirty_element.position.x, dirty_element.position.y,
+				dirty_element.position.x, dirty_element.position.y,
+				dirty_element.size.width, dirty_element.size.height);
+	}
+}
+
+Scene.prototype.click_handler = function(ui_element) {
+	console.log("Click callback on " + ui_element.asset.alias);
+}
+
+Scene.prototype.set_backdrop = function(backdrop_name) {
+	this.backdrop = backdrop_name;
+}
 
 Scene.prototype.draw_backdrop = function(backdrop_name) {
 	var backdrop = this.assets["backdrops"][backdrop_name].get();
@@ -140,6 +201,15 @@ Scene.prototype.draw_character = function(character_name, position) {
 			draw_width, draw_height);
 }
 
+function Character(name, position) {
+	this.name = name;
+	this.position = position;
+}
+
+Scene.prototype.add_character = function(character) {
+	this.characters.push(character);
+}
+
 Scene.prototype.play_bgm = function(bgm_name) {
 	// Note to future Jeff: setting sound.currentTime (sometimes) fires the
 	// canplaythrough event which will probably do weird things to the
@@ -156,11 +226,22 @@ Scene.prototype.render_ui = function() {
 	}
 }
 
-Scene.prototype.render_ui_element = function(ui_element) {
-	console.log(ui_element);
-	this.context.drawImage(ui_element.asset.get(),
-			ui_element.position.x, ui_element.position.y,
-			ui_element.size.width, ui_element.size.height);
+Scene.prototype.render_ui_element = function(ui_element, active) {
+	if (typeof(active) === "undefined") {
+		active = false;
+	}
+
+	var asset = null;
+
+	if (active) {
+		console.log(ui_element.hover_asset);
+		asset = ui_element.hover_asset.get();
+	} else {
+		asset = ui_element.asset.get();
+	}
+		this.context.drawImage(asset,
+				ui_element.position.x, ui_element.position.y,
+				ui_element.size.width, ui_element.size.height);
 }
 
 /*
@@ -171,10 +252,15 @@ Scene.prototype.render_ui_element = function(ui_element) {
 
 function UIController() {
 	this.elements = [];
+	this.click_events = {};
+	this.hover_events = {};
+	this.active = null;
 }
 
 UIController.prototype.add_element = function(ui_element) {
 	this.elements.push(ui_element);
+	this.click_events[ui_element.asset.alias] = new CustomEvent("ren5-click", {detail: {element: ui_element}});
+	this.hover_events[ui_element.asset.alias] = new CustomEvent("ren5-hover", {detail: {element: ui_element}});
 }
 
 UIController.prototype.load_elements = function() {
@@ -200,35 +286,54 @@ UIController.prototype.get_mouse_coords = function(e) {
 }
 
 UIController.prototype.handle_click = function(e) {
+	if (this.active) {
+		document.dispatchEvent(this.click_events[this.active.asset.alias]);
+	}
+}
 
-	var x = 0;
-	var y = 0;
+UIController.prototype.handle_move = function(e) {
+	if (this.active && this.active.in_bounds(this.get_mouse_coords(e)))
+		return;
+
+	this.active = null;
 
 	for (ui_element of this.elements) {
-		console.log(ui_element);
-		if (ui_element.in_bounds(this.get_mouse_coords(e))) {
-			console.log("in-bounds click!");
+		if (ui_element.interactable && ui_element.in_bounds(this.get_mouse_coords(e))) {
+			this.active = ui_element;
 		}
+	}
+
+	if (this.active !== null) {
+		document.dispatchEvent(this.hover_events[this.active.asset.alias]);
+	} else {
+		document.dispatchEvent(new Event("ren5-nohover"));
 	}
 }
 
 /*
  * Expects absolute position and size
  */
-function UIElement(asset, position, size) {
+function UIElement(asset, position, size, interactable, hover_asset) {
+	if (typeof(interactable) !== "undefined") {
+		this.interactable = interactable;
+	} else {
+		this.interactable = true;
+	}
 	this.asset = asset;
 	this.position = position;
 	this.size = size;
+	if (typeof(hover_asset !== "undefined")) {
+		this.hover_asset = hover_asset;
+	} else {
+		this.hover_asset = this.asset;
+	}
 }
 
 UIElement.prototype.in_bounds = function(position) {
-	console.log(this);
-	console.log(position);
 	var left_x = this.position.x;
 	var right_x = this.position.x + this.size.width;
 	var top_y = this.position.y;
 	var bottom_y = this.position.y + this.size.height;
-	console.log(left_x + " " + right_x + " " + top_y + " " + bottom_y);
 	return (position.x >= left_x) && (position.x <= right_x) && (position.y >= top_y) && (position.y <= bottom_y);
 }
 
@@ -244,7 +349,9 @@ function requirements() {
 		bgm: ["morejo.mp3"],
 		ui: ["dialogue.svg",
 		"bottom_config.svg", "bottom_load.svg", "bottom_save.svg", "bottom_menu.svg",
-		"dialogue_auto.svg", "dialogue_next.svg", "dialogue_scene.svg", "dialogue_skip.svg"]}
+		"dialogue_auto.svg", "dialogue_log.svg", "dialogue_scene.svg", "dialogue_skip.svg",
+		"bottom_config_hover.svg", "bottom_load_hover.svg", "bottom_save_hover.svg", "bottom_menu_hover.svg",
+		"dialogue_auto_hover.svg", "dialogue_log_hover.svg", "dialogue_scene_hover.svg", "dialogue_skip_hover.svg"]};
 }
 
 function setup() {
@@ -267,21 +374,70 @@ function run(assets) {
 		controller.handle_click(e);
 	});
 
+	canvas.addEventListener("mousemove", function(e) {
+		controller.handle_move(e);
+	});
+
 	// Only for proof of concept purposes
 	var dialogue_asset = assets["ui"]["dialogue.svg"].get();
 	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
 	controller.add_element(new UIElement(assets["ui"]["dialogue.svg"],
-				{x: (104 / 1280) * canvas.width, y: (471.5 / 720) * canvas.height}, {width: 1280 * 0.844094488, height: (1280 * 0.844095588) / aspect_ratio }));
+				{x: (104 / 1280) * canvas.width, y: (471.5 / 720) * canvas.height},
+				{width: 1280 * 0.844094488, height: (1280 * 0.844095588) / aspect_ratio },
+				false));
 
-	var skip = assets["ui"]["dialogue_skip.svg"].get();
-	aspect_ratio = skip.width / skip.height;
+	var dialogue_button = assets["ui"]["dialogue_skip.svg"].get();
+	aspect_ratio = dialogue_button.width / dialogue_button.height;
 	controller.add_element(new UIElement(assets["ui"]["dialogue_skip.svg"],
-				{x: 0, y: 0}, {width: 1280 * 0.087109375, height: (1280 * 0.087109375) / aspect_ratio}));
+				{x: (484 / 1280) * canvas.width , y: (485 / 720) * canvas.height},
+				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["dialogue_skip_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_auto.svg"],
+				{x: (595.5 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
+				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["dialogue_auto_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_scene.svg"],
+				{x: (707 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
+				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["dialogue_scene_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_log.svg"],
+				{x: (818.5 / 1280) * canvas.width, y: (485 / 720) * canvas.height},
+				{width: canvas.width * (111.5 / 1280), height: (canvas.width * (111.5 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["dialogue_log_hover.svg"]));
 
-	scene.draw_backdrop("had_background.svg");
-	scene.draw_character("had_junko.svg", scene.positions.RIGHT);
-	scene.draw_character("had_pko.svg", scene.positions.LEFT);
-	scene.render_ui();
+	var bottom_button = assets["ui"]["bottom_save.svg"].get();
+	aspect_ratio = bottom_button.width / bottom_button.height;
+	controller.add_element(new UIElement(assets["ui"]["bottom_save.svg"],
+				{x: (263 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
+				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["bottom_save_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_load.svg"],
+				{x: (451 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
+				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["bottom_load_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_config.svg"],
+				{x: (639 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
+				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["bottom_config_hover.svg"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_menu.svg"],
+				{x: (827 / 1280) * canvas.width , y: (694 / 720) * canvas.height},
+				{width: canvas.width * (188 / 1280), height: (canvas.width * (188 / 1280)) / aspect_ratio},
+				true,
+				assets["ui"]["bottom_menu_hover.svg"]));
+
+	scene.register_ui_handlers();
+
+	scene.set_backdrop("had_background.svg");
+	scene.add_character(new Character("had_junko.svg", scene.positions.RIGHT));
+	scene.add_character(new Character("had_pko.svg", scene.positions.LEFT));
+	scene.render();
 	//scene.play_bgm("morejo.mp3");
 }
 
