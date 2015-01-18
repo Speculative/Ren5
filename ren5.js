@@ -124,7 +124,7 @@ Scene.prototype.render = function() {
 		this.draw_character(character.name, character.position);
 	}
 	this.render_ui();
-	this.name_writer.write_text(this.script[this.script_progress].character);
+	this.name_writer.write_text(this.script[this.script_progress].character.toUpperCase());
 	this.script_writer.write_text(this.script[this.script_progress].line);
 }
 
@@ -179,7 +179,7 @@ Scene.prototype.click_handler = function(ui_element) {
 			// just looping text code
 			this.script_progress = 0;
 		}
-		this.name_writer.write_text(this.script[this.script_progress].character);
+		this.name_writer.write_text(this.script[this.script_progress].character.toUpperCase());
 		this.script_writer.write_text(this.script[this.script_progress].line);
 	}
 }
