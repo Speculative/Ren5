@@ -21,7 +21,8 @@ AssetStore.prototype.load_assets = function() {
 		this[category] = {};
 		for (var asset of this.requirements[category]) {
 			var asset_path = "assets/" + category + "/" + asset;
-			this[category][asset] = new Asset(asset, asset_path,
+			var alias = asset.split(".")[0];
+			this[category][alias] = new Asset(alias, asset_path,
 				function() {
 					store.progress += 1;
 					console.log(store.progress / store.progress_target);
@@ -87,12 +88,17 @@ Asset.prototype.get = function() {
 /*
  * Handles all drawing and music playing
  */
-function Scene(backdrop_context, character_context, ui_context, assets, ui_controller) {
+function Scene(backdrop_context, character_context, ui_context, assets, ui_controller, script, name_writer, script_writer) {
 	this.backdrop_context = backdrop_context;
 	this.character_context = character_context;
 	this.ui_context = ui_context;
 	this.assets = assets;
 	this.ui_controller = ui_controller;
+
+	this.script = script;
+	this.script_progress = 0;
+	this.name_writer = name_writer;
+	this.script_writer = script_writer;
 
 	this.characters = [];
 	this.backdrop = null;
@@ -118,6 +124,8 @@ Scene.prototype.render = function() {
 		this.draw_character(character.name, character.position);
 	}
 	this.render_ui();
+	this.name_writer.write_text(this.script[this.script_progress].character);
+	this.script_writer.write_text(this.script[this.script_progress].line);
 }
 
 /*
@@ -137,30 +145,43 @@ Scene.prototype.register_ui_handlers = function() {
 }
 
 Scene.prototype.no_hover_handler = function() {
+	document.getElementById("ren5-container").style.cursor = "auto";
 	this.undo_hover();
 }
 
 Scene.prototype.hover_handler = function(ui_element) {
+	// Must preserve this.active for undo_hover
+	// Thus these operations must occur in this order
 	this.undo_hover();
 	this.active = this.ui_controller.active;
 	this.render_ui_element(ui_element, true);
+	document.getElementById("ren5-container").style.cursor = "pointer";
 }
 
 Scene.prototype.undo_hover = function() {
+	// this.active is the current dirty element (the previous active element)
 	if (this.active !== null && this.default_render !== null) {
-		var dirty_element = this.active;
-		console.log("Un-hovering " + dirty_element.asset.alias);
-		/*
-		this.ui_context.putImageData(this.default_render,
-				dirty_element.position.x, dirty_element.position.y,
-				dirty_element.position.x, dirty_element.position.y,
-				dirty_element.size.width, dirty_element.size.height);
-		*/
+		var composite_operation = this.ui_context.globalCompositeOperation;
+		this.ui_context.globalCompositeOperation = "destination-out";
+		this.render_ui_element(this.active, false);
+		this.ui_context.globalCompositeOperation = composite_operation;
+		this.render_ui_element(this.active, false);
 	}
 }
 
 Scene.prototype.click_handler = function(ui_element) {
-	console.log("Click callback on " + ui_element.asset.alias);
+	if (ui_element !== null) {
+		console.log("Click callback on " + ui_element.asset.alias);
+	} else {
+		if (this.script_progress < this.script.length) {
+			this.script_progress += 1;
+		} else {
+			// just looping text code
+			this.script_progress = 0;
+		}
+		this.name_writer.write_text(this.script[this.script_progress].character);
+		this.script_writer.write_text(this.script[this.script_progress].line);
+	}
 }
 
 Scene.prototype.set_backdrop = function(backdrop_name) {
@@ -171,9 +192,6 @@ Scene.prototype.draw_backdrop = function(backdrop_name) {
 	var backdrop = this.assets["backdrops"][backdrop_name].get();
 	var draw_height = this.backdrop_context.canvas.clientHeight;
 	var draw_width = this.backdrop_context.canvas.clientWidth;
-
-	this.backdrop_context.fillStyle = "#FFFFFF";
-	this.backdrop_context.clearRect(0, 0, draw_height, draw_width);
 
 	this.backdrop_context.drawImage(backdrop,
 			0, 0,
@@ -259,7 +277,6 @@ function UIController() {
 }
 
 UIController.prototype.add_element = function(ui_element) {
-	console.log("adding element " + ui_element.asset.alias);
 	this.elements.push(ui_element);
 	this.click_events[ui_element.asset.alias] = new CustomEvent("ren5-click", {detail: {element: ui_element}});
 	this.hover_events[ui_element.asset.alias] = new CustomEvent("ren5-hover", {detail: {element: ui_element}});
@@ -283,6 +300,8 @@ UIController.prototype.get_mouse_coords = function(e) {
 UIController.prototype.handle_click = function(e) {
 	if (this.active) {
 		document.dispatchEvent(this.click_events[this.active.asset.alias]);
+	} else {
+		document.dispatchEvent(new CustomEvent("ren5-click", {detail: {element: null}}));
 	}
 }
 
@@ -329,9 +348,34 @@ UIElement.prototype.in_bounds = function(position) {
 	var right_x = this.position.x + this.size.width;
 	var top_y = this.position.y;
 	var bottom_y = this.position.y + this.size.height;
-	console.log(left_x + " " + right_x + " " + top_y + " " + bottom_y);
-	console.log(position.x + " " + position.y);
 	return (position.x >= left_x) && (position.x <= right_x) && (position.y >= top_y) && (position.y <= bottom_y);
+}
+
+/*
+ * ============
+ * SCRIPT STUFF
+ * ============
+ */
+function Writer(writing_context, x, y, width, height, font, align) {
+	this.writing_context = writing_context;
+	this.x = x;
+	this.y = y;
+	this.width = width;
+	this.height = height;
+	this.font = font;
+	if (typeof(align) !== "undefined") {
+		this.align = "start";
+	} else {
+		this.align = align;
+	}
+}
+
+Writer.prototype.write_text = function(text) {
+	this.writing_context.font = this.font;
+	this.writing_context.fillStyle = "#FFFFFF";
+	this.writing_context.textAlign = this.align;
+	this.writing_context.clearRect(this.x, this.y, this.width, this.height);
+	this.writing_context.fillText(text, this.x, this.y);
 }
 
 /*
@@ -344,11 +388,26 @@ function requirements() {
 	return {backdrops: ["had_background.svg"],
 		characters: ["had_junko.svg", "had_pko.svg"],
 		bgm: ["morejo.mp3"],
-		ui: ["dialogue.svg",
+		ui: ["dialogue.svg", "dialogue_next.svg",
 		"bottom_config.svg", "bottom_load.svg", "bottom_save.svg", "bottom_menu.svg",
 		"dialogue_auto.svg", "dialogue_log.svg", "dialogue_scene.svg", "dialogue_skip.svg",
 		"bottom_config_hover.svg", "bottom_load_hover.svg", "bottom_save_hover.svg", "bottom_menu_hover.svg",
 		"dialogue_auto_hover.svg", "dialogue_log_hover.svg", "dialogue_scene_hover.svg", "dialogue_skip_hover.svg"]};
+}
+
+function load_script() {
+	return [{character: "JEFFRICA", line: "Finally, we're here at Benn Apps..."},
+		{character: "Jeffrica", line: "Huh, Benn State looks really nice!"},
+		{character: "P-Ko", line: "UBenn."},
+		{character: "P-Ko", line: "What...?"},
+		{character: "Jeffrica", line: "We're at UBenn..."},
+		{character: "Jeffrica", line: "The Ivy League one."},
+		{character: "Jeffrica", line: "The better one."},
+		{character: "P-Ko", line: "Are they not the same thing?"},
+		{character: "Jeffrica", line: "No. No, they aren't even in the same city."},
+		{character: "P-Ko", line: "Ooooohhhh..."},
+		{character: "P-Ko", line: "Whatever! It's not Rootgers, so I don't really care and I'm super cold. Let's register!"},
+		{character: "Jeffrica", line: "..."}];
 }
 
 function setup() {
@@ -365,85 +424,104 @@ function run(assets) {
 	var backdrop_canvas = document.getElementById("ren5-backdrop");
 	var character_canvas = document.getElementById("ren5-character");
 	var ui_canvas = document.getElementById("ren5-ui");
+	var writing_canvas = document.getElementById("ren5-text");
 	var backdrop_context = backdrop_canvas.getContext("2d");
 	var character_context = character_canvas.getContext("2d");
 	var ui_context = ui_canvas.getContext("2d");
+	var writing_context = writing_canvas.getContext("2d");
 
 	var controller = new UIController();
-	var scene = new Scene(backdrop_context, character_context, ui_context, assets, controller);
-	console.log("made scene");
 
-	ui_canvas.addEventListener("mouseup", function(e) {
+	var script = load_script();
+	var script_writer = new Writer(writing_context,
+			(250 / 1280) * writing_canvas.width, (540 / 720) * writing_canvas.height,
+			(745 / 1280) * writing_canvas.width, (115 / 720) * writing_canvas.height,
+			"25pt Calibri", "start");
+	var name_writer = new Writer(writing_context,
+			(260 / 1280) * writing_canvas.width, (490 / 720) * writing_canvas.height,
+			(210 / 1280) * writing_canvas.width, (30 / 720) * writing_canvas.height,
+			"18pt Montserrat", "start");
+	writing_context.textBaseline = "top";
+
+	var scene = new Scene(backdrop_context, character_context, ui_context, assets, controller, script, name_writer, script_writer);
+
+	writing_canvas.addEventListener("mouseup", function(e) {
 		controller.handle_click(e);
 	});
 
-	ui_canvas.addEventListener("mousemove", function(e) {
-		e.stopPropagation();
+	writing_canvas.addEventListener("mousemove", function(e) {
 		controller.handle_move(e);
 	});
 
 	// Only for proof of concept purposes
-	var dialogue_asset = assets["ui"]["dialogue.svg"].get();
+	var dialogue_asset = assets["ui"]["dialogue"].get();
 	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
-	controller.add_element(new UIElement(assets["ui"]["dialogue.svg"],
+	console.log(dialogue_asset.width + " " + dialogue_asset.height);
+	controller.add_element(new UIElement(assets["ui"]["dialogue"],
 				{x: (104 / 1280) * ui_canvas.width, y: (471.5 / 720) * ui_canvas.height},
-				{width: 1280 * 0.844094488, height: (1280 * 0.844095588) / aspect_ratio },
+				{width: ui_canvas.width * (1072 / 1280), height: (ui_canvas.width * (1072 / 1280)) / aspect_ratio },
 				false));
 
-	var dialogue_button = assets["ui"]["dialogue_skip.svg"].get();
+	var dialogue_button = assets["ui"]["dialogue_skip"].get();
 	aspect_ratio = dialogue_button.width / dialogue_button.height;
-	controller.add_element(new UIElement(assets["ui"]["dialogue_skip.svg"],
-				{x: (484 / 1280) * ui_canvas.width , y: (485 / 720) * ui_canvas.height},
+	controller.add_element(new UIElement(assets["ui"]["dialogue_skip"],
+				{x: (482 / 1280) * ui_canvas.width , y: (485 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["dialogue_skip_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["dialogue_auto.svg"],
-				{x: (595.5 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				assets["ui"]["dialogue_skip_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_auto"],
+				{x: (594 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["dialogue_auto_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["dialogue_scene.svg"],
-				{x: (707 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				assets["ui"]["dialogue_auto_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_scene"],
+				{x: (706 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["dialogue_scene_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["dialogue_log.svg"],
-				{x: (818.5 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
+				assets["ui"]["dialogue_scene_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["dialogue_log"],
+				{x: (818 / 1280) * ui_canvas.width, y: (485 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (111.5 / 1280), height: (ui_canvas.width * (111.5 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["dialogue_log_hover.svg"]));
+				assets["ui"]["dialogue_log_hover"]));
 
-	var bottom_button = assets["ui"]["bottom_save.svg"].get();
+	var bottom_button = assets["ui"]["bottom_save"].get();
 	aspect_ratio = bottom_button.width / bottom_button.height;
-	controller.add_element(new UIElement(assets["ui"]["bottom_save.svg"],
+	controller.add_element(new UIElement(assets["ui"]["bottom_save"],
 				{x: (263 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["bottom_save_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["bottom_load.svg"],
+				assets["ui"]["bottom_save_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_load"],
 				{x: (451 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["bottom_load_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["bottom_config.svg"],
+				assets["ui"]["bottom_load_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_config"],
 				{x: (639 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["bottom_config_hover.svg"]));
-	controller.add_element(new UIElement(assets["ui"]["bottom_menu.svg"],
+				assets["ui"]["bottom_config_hover"]));
+	controller.add_element(new UIElement(assets["ui"]["bottom_menu"],
 				{x: (827 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
-				assets["ui"]["bottom_menu_hover.svg"]));
+				assets["ui"]["bottom_menu_hover"]));
 
+	var dialogue_next = assets["ui"]["dialogue_next"].get();
+	aspect_ratio = dialogue_next.width / dialogue_next.height;
+	controller.add_element(new UIElement(assets["ui"]["dialogue_next"],
+				{x: (1039.75 / 1280) * ui_canvas.width, y: (617.25 / 720) * ui_canvas.height},
+				{width: ui_canvas.width * (112.67 / 1280), height: (ui_canvas.width * (112.67 / 1280)) / aspect_ratio},
+				false));
 
 	scene.register_ui_handlers();
 
-	scene.set_backdrop("had_background.svg");
-	scene.add_character(new Character("had_junko.svg", scene.positions.RIGHT));
-	scene.add_character(new Character("had_pko.svg", scene.positions.LEFT));
+	scene.set_backdrop("had_background");
+	scene.add_character(new Character("had_junko", scene.positions.RIGHT));
+	scene.add_character(new Character("had_pko", scene.positions.LEFT));
 	scene.render();
-	//scene.play_bgm("morejo.mp3");
+	//scene.play_bgm("morejo");
 }
 
 $(document).ready(setup);

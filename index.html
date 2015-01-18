@@ -3,6 +3,7 @@
 <head>
 	<title>Ren5 - Hackathons After Dark</title>
 	<meta charset="utf-8">
+	<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
 	<script type="text/javascript" src="jquery-2.1.3.min.js"></script>
 	<script type="text/javascript" src="ren5.js"></script>
 	<style>
@@ -12,16 +13,14 @@
 			padding: 0px;
 		}
 		article {
-			background: #000000;
+			background: #283D3D;
 			overflow: hidden;
 		}
-		h1 {
-			font-family: Helvetica, sans-serif;
-			font-size: 2em;
-			text-align: center;
-			color: #FFFFFF;
-			margin-top: 2em;
-			margin-bottom: 2em;
+		#logo {
+			display: block;
+			width: 800px;
+			margin-left: auto;
+			margin-right: auto;
 		}
 		#ren5-container {
 			display: block;
@@ -30,9 +29,10 @@
 			width: 1280px;
 			margin-left: auto;
 			margin-right: auto;
+			margin-bottom: 40px;
+			font-family: Montserrat;
 		}
 		#ren5-backdrop {
-			display: block;
 			position: absolute;
 			top: 0px;
 			left: 0px;
@@ -41,29 +41,35 @@
 			margin-right: auto;
 			margin-bottom: 40px;
 			overflow: hidden;
-			border: 1px solid pink;
+			z-index: 10;
 		}
 		#ren5-character {
-			display: block;
 			position: absolute;
 			top: 0px;
 			left: 0px;
-			border: 3px solid orange;
+			z-index: 20;
 		}
 		#ren5-ui {
 			position: absolute;
 			top: 0px;
 			left: 0px;
-			border: 1px solid cyan;
+			z-index: 30;
+		}
+		#ren5-text {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+			z-index: 40;
 		}
 	</style>
 </head>
 <body>
 <article>
-<h1>Hackathons After Dark</h1>
+<img id="logo" src="assets/had_logo-01.png">
 <section id="ren5-container">
 	<canvas id="ren5-backdrop" width="1280px" height="720px"></canvas>
 	<canvas id="ren5-character" width="1280px" height="720px"></canvas>
+	<canvas id="ren5-text" width="1280px" height="720px"></canvas>
 	<canvas id="ren5-ui" width="1280px" height="720px"></canvas>
 </section>
 </article>
