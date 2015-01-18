@@ -356,7 +356,16 @@ UIElement.prototype.in_bounds = function(position) {
  * SCRIPT STUFF
  * ============
  */
-function Writer(writing_context, x, y, width, height, font, align) {
+/*
+ * Note that x and y change meaning according to align and baseline:
+ * align = left makes the x coordinate the left edge
+ * align = right makes the x coordinate the right edge
+ * align = center makes the x coordinate the center
+ * baseline is more nuanced. We default to hanging because having y be the
+ * absolute top of the bounding box seems to make the most intuitive sense
+ * in terms of trying to make a layout agnostic of font size
+ */
+function Writer(writing_context, x, y, width, height, font, align, baseline) {
 	this.writing_context = writing_context;
 	this.x = x;
 	this.y = y;
@@ -364,18 +373,63 @@ function Writer(writing_context, x, y, width, height, font, align) {
 	this.height = height;
 	this.font = font;
 	if (typeof(align) !== "undefined") {
-		this.align = "start";
-	} else {
 		this.align = align;
+	} else {
+		this.align = "start";
+	}
+	if (typeof(baseline) !== "undefined") {
+		this.baseline = baseline;
+	} else {
+		this.baseline = "hanging";
 	}
 }
 
 Writer.prototype.write_text = function(text) {
+	// Font properties
 	this.writing_context.font = this.font;
 	this.writing_context.fillStyle = "#FFFFFF";
 	this.writing_context.textAlign = this.align;
-	this.writing_context.clearRect(this.x, this.y, this.width, this.height);
+
+	// Text positioning
+	
+
+	this.clear_text();
 	this.writing_context.fillText(text, this.x, this.y);
+}
+
+Writer.prototype.clear_text = function() {
+	var x = 0;
+	var y = 0;
+	var align = this.align;
+	var direction = getComputedStyle(this.writing_context.canvas).direction;
+	console.log(direction);
+		
+	if (direction === "ltr") {
+		if (align === "start") {
+			align = "left";
+		} else if (align === "end") {
+			align = "right";
+		}
+	} else if (direction === "rtl") {
+		if (align === "start") {
+			align = "right";
+		} else if (align === "end") {
+			align = "left";
+		}
+	}
+
+	if (align === "left") {
+		x = this.x;
+		y = this.y;
+	} else if (align === "right") {
+		x = this.x - this.width;
+		y = this.y;
+	} else if (align === "center") {
+		x = this.x - (this.width / 2);
+		y = this.y;
+	}
+
+	this.writing_context.clearRect(x, y, this.width, this.height);
 }
 
 /*
@@ -396,9 +450,9 @@ function requirements() {
 }
 
 function load_script() {
-	return [{character: "JEFFRICA", line: "Finally, we're here at Benn Apps..."},
-		{character: "Jeffrica", line: "Huh, Benn State looks really nice!"},
-		{character: "P-Ko", line: "UBenn."},
+	return [{character: "P-Ko", line: "Finally, we're here at Benn Apps..."},
+		{character: "P-Ko", line: "Huh, Benn State looks really nice!"},
+		{character: "Jeffrica", line: "UBenn."},
 		{character: "P-Ko", line: "What...?"},
 		{character: "Jeffrica", line: "We're at UBenn..."},
 		{character: "Jeffrica", line: "The Ivy League one."},
@@ -407,7 +461,8 @@ function load_script() {
 		{character: "Jeffrica", line: "No. No, they aren't even in the same city."},
 		{character: "P-Ko", line: "Ooooohhhh..."},
 		{character: "P-Ko", line: "Whatever! It's not Rootgers, so I don't really care and I'm super cold. Let's register!"},
-		{character: "Jeffrica", line: "..."}];
+		{character: "Jeffrica", line: "..."},
+		{character: "Actual Jeff", line: "Lorem ipsum dolor sit go fuck yourself. I sure am glad I added in that support for long lines of text look at how pretty it wraps ooooooo"}];
 }
 
 function setup() {
@@ -438,10 +493,10 @@ function run(assets) {
 			(745 / 1280) * writing_canvas.width, (115 / 720) * writing_canvas.height,
 			"25pt Calibri", "start");
 	var name_writer = new Writer(writing_context,
-			(260 / 1280) * writing_canvas.width, (490 / 720) * writing_canvas.height,
+			(365 / 1280) * writing_canvas.width, (490 / 720) * writing_canvas.height,
 			(210 / 1280) * writing_canvas.width, (30 / 720) * writing_canvas.height,
-			"18pt Montserrat", "start");
-	writing_context.textBaseline = "top";
+			"18pt Montserrat", "center");
+	writing_context.textBaseline = "hanging";
 
 	var scene = new Scene(backdrop_context, character_context, ui_context, assets, controller, script, name_writer, script_writer);
 
