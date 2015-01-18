@@ -2,7 +2,12 @@
 <!-- Generator: Adobe Illustrator 18.1.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 width="112.7px" height="51.3px" viewBox="0 0 112.7 51.3" enable-background="new 0 0 112.7 51.3" xml:space="preserve">
-<text transform="matrix(1 0 0 1 47.448 30.2432)" fill="#FFD400" font-family="'Gotham-Medium'" font-size="10.9785" letter-spacing="1">NEXT</text>
+<g>
+	<path fill="#FFD400" d="M48.4,22.6h1.3l4.1,5.3v-5.3h1.3v7.7H54l-4.2-5.5v5.5h-1.3V22.6z"/>
+	<path fill="#FFD400" d="M58.2,22.6h5.7v1.2h-4.3v2h3.9V27h-3.9V29H64v1.2h-5.7V22.6z"/>
+	<path fill="#FFD400" d="M73.2,22.6l-2.7,3.8l2.8,3.9h-1.6l-2-2.9l-2,2.9h-1.5l2.8-3.9l-2.7-3.8h1.6l1.9,2.8l1.9-2.8H73.2z"/>
+	<path fill="#FFD400" d="M77.6,23.8h-2.4v-1.3h6.2v1.3H79v6.4h-1.4V23.8z"/>
+</g>
 <g>
 	<g>
 		<path fill="#FFCE00" d="M27.2,24.3c-1.9,2.5-1.4,6.1,1.2,8s6.1,1.4,8-1.2c1.9-2.5,1.4-6.1-1.2-8C32.6,21.2,29.1,21.8,27.2,24.3z
