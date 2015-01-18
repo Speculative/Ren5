@@ -390,11 +390,28 @@ Writer.prototype.write_text = function(text) {
 	this.writing_context.fillStyle = "#FFFFFF";
 	this.writing_context.textAlign = this.align;
 
-	// Text positioning
-	
-
 	this.clear_text();
-	this.writing_context.fillText(text, this.x, this.y);
+
+	// Text positioning
+	var words = text.split(" ");
+	var line = "";
+	var vert_offset = 0;
+	for (word of words) {
+		var test_line = line + word + " ";
+		var test_width = this.writing_context.measureText(test_line).width;
+		if (test_width >= this.width) {
+			this.writing_context.fillText(line, this.x, this.y + vert_offset);
+			line = word + " ";
+			vert_offset += 30; //TOTALLY ARBITRARY
+			//ALSO NEED TO ACCOUNT FOR VERTICAL OVERFLOW
+		} else {
+			line = test_line;
+		}
+	}
+
+	this.writing_context.fillText(line, this.x, this.y + vert_offset);
+
+	//this.writing_context.fillText(text, this.x, this.y);
 }
 
 Writer.prototype.clear_text = function() {
@@ -418,6 +435,7 @@ Writer.prototype.clear_text = function() {
 		}
 	}
 
+	// Note: this isn't changing y, but it should. That probably involves font math.
 	if (align === "left") {
 		x = this.x;
 		y = this.y;
@@ -468,6 +486,7 @@ function load_script() {
 function setup() {
 	var load_complete = new Event("load_complete");
 	var assets = null;
+	//var font_loader = document.createElement("span");
 	document.addEventListener("load_complete", function() {
 		run(assets)
 	});
@@ -576,7 +595,10 @@ function run(assets) {
 	scene.add_character(new Character("had_junko", scene.positions.RIGHT));
 	scene.add_character(new Character("had_pko", scene.positions.LEFT));
 	scene.render();
-	//scene.play_bgm("morejo");
+	scene.play_bgm("morejo");
 }
 
-$(document).ready(setup);
+document.addEventListener("DOMContentLoaded", function() {
+	setup()
+});
+
