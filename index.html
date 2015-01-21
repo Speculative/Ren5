@@ -3,7 +3,7 @@
 <head>
 	<title>Ren5 - Hackathons After Dark</title>
 	<meta charset="utf-8">
-	<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+	<link id="font" href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
 
 	<script type="text/javascript" src="ren5.js"></script>
 	<style>
@@ -12,16 +12,19 @@
 			margin: 0px;
 			padding: 0px;
 		}
+
 		article {
 			background: #283D3D;
 			overflow: hidden;
 		}
+
 		#logo {
 			display: block;
 			width: 800px;
 			margin-left: auto;
 			margin-right: auto;
 		}
+
 		#ren5-container {
 			display: block;
 			position: relative;
@@ -31,6 +34,7 @@
 			margin-right: auto;
 			margin-bottom: 40px;
 		}
+		
 		#ren5-backdrop {
 			position: absolute;
 			top: 0px;
@@ -42,18 +46,21 @@
 			overflow: hidden;
 			z-index: 10;
 		}
+
 		#ren5-character {
 			position: absolute;
 			top: 0px;
 			left: 0px;
 			z-index: 20;
 		}
+
 		#ren5-ui {
 			position: absolute;
 			top: 0px;
 			left: 0px;
 			z-index: 30;
 		}
+
 		#ren5-text {
 			position: absolute;
 			top: 0px;
@@ -61,11 +68,24 @@
 			font-family: Montserrat;
 			z-index: 40;
 		}
+
+		#font-tester {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+			font-family: Montserrat;
+			visibility: hidden;
+		}
 	</style>
 </head>
 <body>
 <article>
 <img id="logo" src="assets/had_logo-01.png">
+<!--
+Having a span use the font forces it to be loaded before document is ready,
+fixing http://stackoverflow.com/questions/2756575/
+-->
+<span id="font-tester">.</span>
 <section id="ren5-container">
 	<canvas id="ren5-backdrop" width="1280px" height="720px"></canvas>
 	<canvas id="ren5-character" width="1280px" height="720px"></canvas>

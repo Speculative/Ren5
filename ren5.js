@@ -147,11 +147,13 @@ Scene.prototype.register_ui_handlers = function() {
 Scene.prototype.no_hover_handler = function() {
 	document.getElementById("ren5-container").style.cursor = "auto";
 	this.undo_hover();
+	this.active = null;
 }
 
 Scene.prototype.hover_handler = function(ui_element) {
 	// Must preserve this.active for undo_hover
 	// Thus these operations must occur in this order
+	console.log("hover_handler");
 	this.undo_hover();
 	this.active = this.ui_controller.active;
 	this.render_ui_element(ui_element, true);
@@ -160,10 +162,12 @@ Scene.prototype.hover_handler = function(ui_element) {
 
 Scene.prototype.undo_hover = function() {
 	// this.active is the current dirty element (the previous active element)
-	if (this.active !== null && this.default_render !== null) {
+	if (this.active !== null) {
+		console.log("undo_hover");
 		var composite_operation = this.ui_context.globalCompositeOperation;
+		// Firefox does not correctly erase when we do destination-out
 		this.ui_context.globalCompositeOperation = "destination-out";
-		this.render_ui_element(this.active, false);
+		this.render_ui_element(this.active, true);
 		this.ui_context.globalCompositeOperation = composite_operation;
 		this.render_ui_element(this.active, false);
 	}
@@ -306,13 +310,14 @@ UIController.prototype.handle_click = function(e) {
 }
 
 UIController.prototype.handle_move = function(e) {
-	if (this.active && this.active.in_bounds(this.get_mouse_coords(e)))
+	var mouse_coords = this.get_mouse_coords(e);
+	if (this.active && this.active.in_bounds(mouse_coords))
 		return;
 
 	this.active = null;
 
 	for (ui_element of this.elements) {
-		if (ui_element.interactable && ui_element.in_bounds(this.get_mouse_coords(e))) {
+		if (ui_element.interactable && ui_element.in_bounds(mouse_coords)) {
 			this.active = ui_element;
 		}
 	}
@@ -419,7 +424,6 @@ Writer.prototype.clear_text = function() {
 	var y = 0;
 	var align = this.align;
 	var direction = getComputedStyle(this.writing_context.canvas).direction;
-	console.log(direction);
 		
 	if (direction === "ltr") {
 		if (align === "start") {
@@ -530,7 +534,6 @@ function run(assets) {
 	// Only for proof of concept purposes
 	var dialogue_asset = assets["ui"]["dialogue"].get();
 	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
-	console.log(dialogue_asset.width + " " + dialogue_asset.height);
 	controller.add_element(new UIElement(assets["ui"]["dialogue"],
 				{x: (104 / 1280) * ui_canvas.width, y: (471.5 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (1072 / 1280), height: (ui_canvas.width * (1072 / 1280)) / aspect_ratio },
@@ -595,10 +598,13 @@ function run(assets) {
 	scene.add_character(new Character("had_junko", scene.positions.RIGHT));
 	scene.add_character(new Character("had_pko", scene.positions.LEFT));
 	scene.render();
-	scene.play_bgm("morejo");
+	//scene.play_bgm("morejo");
 }
 
 document.addEventListener("DOMContentLoaded", function() {
 	setup()
 });
-
+var font = document.getElementById("font");
+font.onload = function() {
+	console.log("Font loaded");
+};
