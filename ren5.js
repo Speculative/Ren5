@@ -1,3 +1,5 @@
+// TODO: Just added ui_hover_context to the UI Controller
+// Need to make it render to the hover context
 var IMG_EXTS = ["png", "jpg", "jpeg", "bmp", "svg"];
 var BGM_EXTS = ["mp3", "wav"];
 
@@ -88,10 +90,11 @@ Asset.prototype.get = function() {
 /*
  * Handles all drawing and music playing
  */
-function Scene(backdrop_context, character_context, ui_context, assets, ui_controller, script, name_writer, script_writer) {
+function Scene(backdrop_context, character_context, ui_context, ui_hover_context, assets, ui_controller, script, name_writer, script_writer) {
 	this.backdrop_context = backdrop_context;
 	this.character_context = character_context;
 	this.ui_context = ui_context;
+    this.ui_hover_context = ui_hover_context;
 	this.assets = assets;
 	this.ui_controller = ui_controller;
 
@@ -153,23 +156,16 @@ Scene.prototype.no_hover_handler = function() {
 Scene.prototype.hover_handler = function(ui_element) {
 	// Must preserve this.active for undo_hover
 	// Thus these operations must occur in this order
-	console.log("hover_handler");
 	this.undo_hover();
 	this.active = this.ui_controller.active;
-	this.render_ui_element(ui_element, true);
+	this.render_ui_element_hover(ui_element, true);
 	document.getElementById("ren5-container").style.cursor = "pointer";
 }
 
 Scene.prototype.undo_hover = function() {
 	// this.active is the current dirty element (the previous active element)
 	if (this.active !== null) {
-		console.log("undo_hover");
-		var composite_operation = this.ui_context.globalCompositeOperation;
-		// Firefox does not correctly erase when we do destination-out
-		this.ui_context.globalCompositeOperation = "destination-out";
-		this.render_ui_element(this.active, true);
-		this.ui_context.globalCompositeOperation = composite_operation;
-		this.render_ui_element(this.active, false);
+		this.render_ui_element_hover(this.active, false);
 	}
 }
 
@@ -250,21 +246,26 @@ Scene.prototype.render_ui = function() {
 	}
 }
 
-Scene.prototype.render_ui_element = function(ui_element, active) {
-	if (typeof(active) === "undefined") {
-		active = false;
-	}
-
-	var asset = null;
-
-	if (active) {
-		asset = ui_element.hover_asset.get();
-	} else {
-		asset = ui_element.asset.get();
-	}
-		this.ui_context.drawImage(asset,
+Scene.prototype.render_ui_element = function(ui_element) {
+		this.ui_context.drawImage(ui_element.asset.get(),
 				ui_element.position.x, ui_element.position.y,
 				ui_element.size.width, ui_element.size.height);
+}
+
+Scene.prototype.render_ui_element_hover = function(ui_element, active) {
+	if (typeof(active) === "undefined") {
+		active = false;	
+	}
+
+	if (active) {
+		this.ui_hover_context.drawImage(ui_element.hover_asset.get(),
+				ui_element.position.x, ui_element.position.y,
+				ui_element.size.width, ui_element.size.height);
+	} else {
+		this.ui_hover_context.clearRect(
+				ui_element.position.x, ui_element.position.y,
+				ui_element.size.width, ui_element.size.height);
+	}
 }
 
 /*
@@ -502,10 +503,13 @@ function run(assets) {
 	var backdrop_canvas = document.getElementById("ren5-backdrop");
 	var character_canvas = document.getElementById("ren5-character");
 	var ui_canvas = document.getElementById("ren5-ui");
+    var ui_hover_context = document.getElementById("ren5-ui-hover");
 	var writing_canvas = document.getElementById("ren5-text");
+
 	var backdrop_context = backdrop_canvas.getContext("2d");
 	var character_context = character_canvas.getContext("2d");
 	var ui_context = ui_canvas.getContext("2d");
+    var ui_hover_context = ui_hover_context.getContext("2d");
 	var writing_context = writing_canvas.getContext("2d");
 
 	var controller = new UIController();
@@ -521,7 +525,7 @@ function run(assets) {
 			"18pt Montserrat", "center");
 	writing_context.textBaseline = "hanging";
 
-	var scene = new Scene(backdrop_context, character_context, ui_context, assets, controller, script, name_writer, script_writer);
+	var scene = new Scene(backdrop_context, character_context, ui_context, ui_hover_context, assets, controller, script, name_writer, script_writer);
 
 	writing_canvas.addEventListener("mouseup", function(e) {
 		controller.handle_click(e);
@@ -565,22 +569,22 @@ function run(assets) {
 	var bottom_button = assets["ui"]["bottom_save"].get();
 	aspect_ratio = bottom_button.width / bottom_button.height;
 	controller.add_element(new UIElement(assets["ui"]["bottom_save"],
-				{x: (263 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{x: (263 / 1280) * ui_canvas.width , y: (695 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_save_hover"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_load"],
-				{x: (451 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{x: (451 / 1280) * ui_canvas.width , y: (695 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_load_hover"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_config"],
-				{x: (639 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{x: (639 / 1280) * ui_canvas.width , y: (695 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_config_hover"]));
 	controller.add_element(new UIElement(assets["ui"]["bottom_menu"],
-				{x: (827 / 1280) * ui_canvas.width , y: (694 / 720) * ui_canvas.height},
+				{x: (827 / 1280) * ui_canvas.width , y: (695 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (188 / 1280), height: (ui_canvas.width * (188 / 1280)) / aspect_ratio},
 				true,
 				assets["ui"]["bottom_menu_hover"]));
@@ -604,7 +608,3 @@ function run(assets) {
 document.addEventListener("DOMContentLoaded", function() {
 	setup()
 });
-var font = document.getElementById("font");
-font.onload = function() {
-	console.log("Font loaded");
-};
