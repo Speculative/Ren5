@@ -12,7 +12,15 @@ var BGM_EXTS = ["mp3", "wav"];
 function AssetStore(requirements, completion_event) {
 	this.requirements = requirements;
 	this.progress = 0;
-	this.progress_target = this.total_assets();
+
+	this.progress_target = 0;
+	// Calculate progress target
+	for (category in this.requirements) {
+		for (asset of this.requirements[category]) {
+			this.progress_target += 1;
+		}
+	}
+
 	this.completion_event = completion_event;
 	this.load_assets();
 }
@@ -24,26 +32,34 @@ AssetStore.prototype.load_assets = function() {
 		for (var asset of this.requirements[category]) {
 			var asset_path = "assets/" + category + "/" + asset;
 			var alias = asset.split(".")[0];
-			this[category][alias] = new Asset(alias, asset_path,
+			var asset = this.load_asset(asset_path, 
 				function() {
 					store.progress += 1;
 					console.log(store.progress / store.progress_target);
 					if (store.progress == store.progress_target) {
 						document.dispatchEvent(store.completion_event);
-				}
-			});
+					}
+				});
+			this[category][alias] = new Asset(alias, asset);
 		}
 	}
 }
 
-AssetStore.prototype.total_assets = function() {
-	var total = 0;
-	for (category in this.requirements) {
-		for (asset of this.requirements[category]) {
-			total += 1;
-		}
+AssetStore.prototype.load_asset = function(path, done_callback) {
+	var asset = null;
+	var ext = path.split(".").pop();
+
+	if (IMG_EXTS.indexOf(ext) !== -1) {
+		asset = new Image();
+		asset.onload = done_callback;
+		asset.src = path;
+	} else if (BGM_EXTS.indexOf(ext) !== -1) {
+		asset = new Audio();
+		asset.addEventListener("canplaythrough", done_callback);
+		asset.src = path;
 	}
-	return total;
+
+	return asset;
 }
 
 AssetStore.prototype.get_progress = function() {
@@ -54,27 +70,9 @@ AssetStore.prototype.get_progress_target = function() {
 	return this.progress_target;
 }
 
-function Asset(alias, path, done_callback) {
+function Asset(alias, asset) {
 	this.alias = alias;
-	this.path = path;
-	this.done_callback = done_callback;
-	this.asset = null;
-	this.load_asset();
-}
-
-Asset.prototype.load_asset = function() {
-	var ext = this.path.split(".").pop();
-	if (IMG_EXTS.indexOf(ext) !== -1) {
-		this.asset = new Image();
-		this.asset.onload = this.done_callback;
-		this.asset.src = this.path;
-	} else if (BGM_EXTS.indexOf(ext) !== -1) {
-		this.asset = new Audio();
-		this.asset.addEventListener("canplaythrough", this.done_callback);
-		this.asset.src = this.path;
-	} else {
-		return null;
-	}
+	this.asset = asset;
 }
 
 Asset.prototype.get = function() {
@@ -94,7 +92,7 @@ function Scene(backdrop_context, character_context, ui_context, ui_hover_context
 	this.backdrop_context = backdrop_context;
 	this.character_context = character_context;
 	this.ui_context = ui_context;
-    this.ui_hover_context = ui_hover_context;
+	this.ui_hover_context = ui_hover_context;
 	this.assets = assets;
 	this.ui_controller = ui_controller;
 
@@ -254,7 +252,7 @@ Scene.prototype.render_ui_element = function(ui_element) {
 
 Scene.prototype.render_ui_element_hover = function(ui_element, active) {
 	if (typeof(active) === "undefined") {
-		active = false;	
+		active = false;
 	}
 
 	if (active) {
@@ -362,6 +360,7 @@ UIElement.prototype.in_bounds = function(position) {
  * SCRIPT STUFF
  * ============
  */
+
 /*
  * Note that x and y change meaning according to align and baseline:
  * align = left makes the x coordinate the left edge
@@ -416,8 +415,6 @@ Writer.prototype.write_text = function(text) {
 	}
 
 	this.writing_context.fillText(line, this.x, this.y + vert_offset);
-
-	//this.writing_context.fillText(text, this.x, this.y);
 }
 
 Writer.prototype.clear_text = function() {
@@ -425,7 +422,7 @@ Writer.prototype.clear_text = function() {
 	var y = 0;
 	var align = this.align;
 	var direction = getComputedStyle(this.writing_context.canvas).direction;
-		
+
 	if (direction === "ltr") {
 		if (align === "start") {
 			align = "left";
@@ -539,7 +536,7 @@ function run(assets) {
 	var dialogue_asset = assets["ui"]["dialogue"].get();
 	var aspect_ratio = dialogue_asset.width / dialogue_asset.height;
 	controller.add_element(new UIElement(assets["ui"]["dialogue"],
-				{x: (104 / 1280) * ui_canvas.width, y: (471.5 / 720) * ui_canvas.height},
+				{x: (105 / 1280) * ui_canvas.width, y: (471.5 / 720) * ui_canvas.height},
 				{width: ui_canvas.width * (1072 / 1280), height: (ui_canvas.width * (1072 / 1280)) / aspect_ratio },
 				false));
 
